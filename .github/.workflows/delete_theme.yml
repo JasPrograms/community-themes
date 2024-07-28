@@ -1,0 +1,25 @@
+name: Delete Theme
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'themes.json'
+
+jobs:
+  delete-theme:
+    if: startsWith(github.event.head_commit.message, 'DELETE_THEME:')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Delete theme
+        run: |
+          theme_name=$(echo '${{ github.event.head_commit.message }}' | sed 's/DELETE_THEME: //')
+          jq --arg name "$theme_name" '.themes |= map(select(.Name != $name))' themes.json > temp.json && mv temp.json themes.json
+      - name: Commit and push if changed
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add themes.json
+          git commit -m "Deleted theme: $theme_name" || exit 0
+          git push
