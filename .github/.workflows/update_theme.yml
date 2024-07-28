@@ -1,0 +1,26 @@
+name: Update Theme
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'themes.json'
+
+jobs:
+  update-theme:
+    if: startsWith(github.event.head_commit.message, 'UPDATE_THEME:')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update theme
+        run: |
+          update_data=$(echo '${{ github.event.head_commit.message }}' | sed 's/UPDATE_THEME: //')
+          theme_name=$(echo $update_data | jq -r '.name')
+          jq --argjson update "$update_data" '.themes |= map(if .Name == $update.name then $update else . end)' themes.json > temp.json && mv temp.json themes.json
+      - name: Commit and push if changed
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add themes.json
+          git commit -m "Updated theme: $theme_name" || exit 0
+          git push
